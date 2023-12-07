@@ -1,0 +1,226 @@
+---
+title: "Analysis of Light Rail Usage and Suburb Transit Patterns in 2022"
+subtitle: "Project 3"
+author: "SID: 520544927"
+date: "University of Sydney | DATA 1001 | May 2023"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    code_folding: hide
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(plotly)
+  library(tidyverse)
+})
+
+# Read the data
+data = read.csv("~/Desktop/LightRail_Jan2023.csv")
+```
+
+## **Client Info and Recommendation**
+
+>**Client**: [City of Sydney Council](https://data.nsw.gov.au/data/organization/about/council-of-the-city-of-sydney)
+
+- Develop and maintain Sydney infrastructure
+- Assess and approve development applications
+- Manage local environment issues
+
+>**Recommendation**:
+
+- Attract real estate investors and stimulate the local economy in the area of the "Central Grand Concourse Light Rail" station
+- Improve public facilities around the "Central Grand Concourse Light Rail" station
+- Prioritize investment in transportation infrastructure within the Central Business District (CBD)
+- Implement measures to alleviate congestion in the CBD
+
+## **Evidence**
+
+### Data Overview
+
+>**Content**:
+
+- Opal card-based Light Rail trip counts in Sydney, spanning from July 2016 to January 2023
+
+>**Variables**:
+
+- Year and month
+- Location
+- Card type
+- Trip
+
+### Which light rail is most popular among adults over years?
+```{r}
+# Summarize data
+total = data %>%
+  filter(Card_type == "Adult") %>%
+  group_by(Location) %>%
+  summarise(Total = sum(Trip))
+
+# Bar plot
+b = ggplot(total, aes(x = reorder(Location, Total), y = Total)) +
+  geom_bar(stat = "identity", aes(fill = Total)) +
+  scale_fill_gradient(low = "#3494e6", high = "#ec6ead") +
+  coord_flip() +
+  theme_minimal() +
+  labs(x = NULL, y = "Total Trips", title = "Total Adult Trips Over Years") +
+  theme(plot.title = element_text(hjust = 0.5, size = 5),
+        axis.text.x = element_text(size = 5),
+        axis.text.y = element_text(size = 5),
+        axis.title.x = element_text(size = 5),
+        axis.title.y = element_text(size = 5),
+        legend.text = element_text(size = 5),
+        legend.title = element_text(size = 5))
+
+ggplotly(b, tooltip = c("x", "y"))
+```
+### {.tabset .tabset-pills}
+
+#### **Description**
+- This horizontal barplot visually represents the total adult trips at each light rail location. Each bar represents a unique location, and the length of the bar corresponds to the total number of trips at that location.
+
+- Locations with more total trips might be more popular due to factors like proximity to commercial areas, residential density, or connection to other transportation hubs.
+
+#### **Analysis**
+- The figure above shows that the "Central Grand Concourse Light Rail" station had the highest total adult trips over the years, which implies it is a significant hub in the Sydney transport network. The high passenger flow of this station may attract building developers. The council could use this data to market the area to potential developers or guide policies to control the scale and style of development.
+
+- High usage of public transport correlates with high public facilities. The city council's urban planning department can explore the possibility of incorporating additional green areas, parks, outdoor seating, and public artwork near Central Grand Concourse. These facilities not only enhance the city's liveability but also provide recreational opportunities.
+
+### How did the total trips vary by suburb in Sydney throughout 2022?
+```{r}
+# Mapping data frame
+mapping = data.frame(
+  Location = c(
+    "Arlington Light Rail", "Capitol Square Light Rail", "Central Grand Concourse Light Rail",
+    "Convention Light Rail", "Dulwich Grove Light Rail", "Dulwich Hill Light Rail",
+    "Exhibition Centre Light Rail", "Fish Market Light Rail", "Glebe Light Rail", 
+    "Hawthorne Light Rail", "John Street Square Light Rail", "Jubilee Park Light Rail",
+    "Leichhardt North Light Rail", "Lewisham West Light Rail", "Lilyfield Light Rail",
+    "Marion Light Rail", "Paddy's Markets Light Rail", "Pyrmont Bay Light Rail",
+    "Rozelle Bay Light Rail", "Taverners Hill Light Rail", "The Star Light Rail",
+    "Waratah Mills Light Rail", "Wentworth Park Light Rail", "Civic Light Rail",
+    "Crown Street Light Rail", "Honeysuckle Light Rail", "Newcastle Beach Light Rail",
+    "Newcastle Interchange Light Rail", "Queens Wharf Light Rail", "Bridge Street Light Rail",
+    "Central Chalmers Street Light Rail", "Chinatown Light Rail", "Circular Quay Light Rail",
+    "Haymarket Light Rail", "Moore Park Light Rail", "QVB Light Rail", "Randwick Light Rail",
+    "Royal Randwick Light Rail", "Surry Hills Light Rail", "Town Hall Light Rail",
+    "UNSW High Street Light Rail", "Wansey Road Light Rail", "Wynyard Light Rail",
+    "ES Marks Light Rail", "Juniors Kingsford Light Rail", "Kensington Light Rail",
+    "Kingsford Light Rail", "UNSW Anzac Parade Light Rail"
+  ),
+  Suburb = c(
+    "Dulwich Hill", "Haymarket", "Haymarket", "Darling Harbour", "Dulwich Hill", 
+    "Dulwich Hill", "Darling Harbour", "Pyrmont", "Glebe", "Leichhardt", "Pyrmont", 
+    "Glebe", "Leichhardt", "Lewisham", "Lilyfield", "Leichhardt", "Haymarket", "Pyrmont",
+    "Rozelle", "Leichhardt", "Pyrmont", "Dulwich Hill", "Glebe", "Newcastle",
+    "Surry Hills", "Newcastle", "Newcastle", "Newcastle", "Newcastle", "CBD", 
+    "Surry Hills", "Haymarket", "CBD", "Haymarket", "Moore Park", "CBD", 
+    "Randwick", "Randwick", "Surry Hills", "CBD", "Randwick", "Randwick", "CBD", 
+    "Kensington", "Kingsford", "Kensington", "Kingsford", "Kingsford"
+  )
+)
+
+# Extract the year and month
+data$Year = as.integer(substr(data$Year_Month, 1, 4))
+data$Month = as.integer(substr(data$Year_Month, 6, 7))
+
+# Filter the data for months in 2022
+data = data[data$Year == 2022,]
+
+# Merge the data with mapping
+merged = merge(data, mapping, by="Location")
+
+# Summarize total trips for each month
+new_data = merged %>%
+  group_by(Suburb, Month) %>%
+  summarise(Total = sum(Trip), .groups = "drop") %>%
+  ungroup()
+
+# Convert Month to numeric
+new_data$Month = as.numeric(new_data$Month)
+
+# Plotting the data
+p = ggplot(new_data, aes(x = Month, y = Total, color = Suburb)) +
+  geom_line() +
+  labs(x = "Month", y = "Total Trips",
+       title = "Total Trips by Suburb in 2022",
+       color = "Suburb") +
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  theme(axis.title = element_text(size = 10), 
+        plot.title = element_text(size = 12))
+
+# Convert the plot to an interactive plot
+ggplotly(p)
+```
+
+### {.tabset .tabset-pills}
+
+#### **Description**
+- By searching the location of each light rail station on Google Map, all of the 49 light rail stations are categorized with their located suburbs in Sydney first.
+
+- This chart depicts the variation in total trips for different Sydney suburbs throughout 2022. Each line represents a specific suburb, showcasing the monthly fluctuations in the number of trips taken.
+
+#### **Analysis**
+- The line chart above shows that the Central Business District (CBD) is the suburb with the highest number of total trips each month, significantly surpassing all other suburbs. The total trips to the CBD monthly are approximately 1.5 times greater than the second-highest suburb, Haymarket.
+
+- The consistently high total trips to the CBD indicate the area's significance as an important economic and cultural center. The City of Sydney Council should prioritize investment in transportation infrastructure within the CBD to support the high travel demand.
+
+- The council should proactively address congestion issues in the CBD, given its highest total yearly trips. By promoting sustainable mobility options like walking and cycling and implementing congestion pricing, the traffic flow can be effectively managed, and the congestion can be reduced.
+
+## **Acknowledgments**
+
+City of Sydney. (2019, June 17). Home - City of Sydney. Nsw.gov.au. https://www.cityofsydney.nsw.gov.au/
+
+Modern Analytic Apps for the Enterprise - Plotly. (n.d.). Plotly.com. https://plotly.com/
+
+Opal Trips - Light Rail | TfNSW Open Data Hub and Developer Portal. (n.d.). Opendata.transport.nsw.gov.au. https://opendata.transport.nsw.gov.au/dataset/opal-trips-light-rail
+
+R Markdown Hints. (n.d.). Byuistats.github.io. Retrieved May 24, 2023, from https://byuistats.github.io/Statistics-Notebook/RMarkdownHints.html
+
+## **Appendix**
+
+>**Client**:
+
+- The City of Sydney Council was chosen as the client because of its ability to put the recommendations into practice. The report's analysis directly applied to their roles in urban planning and public transportation.
+
+- Besides, this report also considers community benefits and solutions for transportation infrastructure and congestion issues, which corresponds with the objectives of the city council.
+
+#### Percentage Distribution of Card Types for Light Rail Trips Over Years
+```{r}
+# Calculate the total trips for each card type over years
+card_type_totals = data %>%
+  group_by(Card_type) %>%
+  summarise(Total_Trips = sum(Trip), .groups = "drop")
+
+# Calculate the percentage of each card type
+card_type_totals =  card_type_totals %>%
+  mutate(Percentage = Total_Trips / sum(Total_Trips) * 100)
+
+# Create the pie chart using plotly
+interactive_pie_chart <- plot_ly(card_type_totals, labels = ~Card_type, values = ~Percentage, type = 'pie') %>%
+  layout(xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+# Display the interactive pie chart
+ggplotly(interactive_pie_chart)
+```
+
+>**Statistical Analysis**:
+
+- Identifying which light rail line has been most popular among adults over the years is essential, as adults represent the largest user group. Understanding their preferences can give information about commuting patterns, assisting in service optimization and future planning.
+
+- Identifying which suburb has the most monthly trips is crucial for understanding the urban flow, which signals a need for increased services and improved infrastructure.
+
+>**Limitation**:
+
+- The data set, which covers the period from July 2016 to January 2023, excludes light rail stations built after this period. Travel patterns and commuting patterns may be significantly changed by the constantly changing transportation infrastructure.
+
+- Additionally, since some stations might be regulated by more than one suburb, the classification of light rails may contain errors.
+
+
+
+
+
+
